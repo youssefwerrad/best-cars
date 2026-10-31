@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    environment: {POSTGRES_DB: dealership, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres}
+    volumes: [pg_data:/var/lib/postgresql/data]
+  sentiment:
+    build: ./djangoapp/microservices
+    ports: ["5050:5000"]
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py seed && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DB_ENGINE: postgres
+      DB_HOST: db
+      sentiment_analyzer_url: http://sentiment:5000/
+    ports: ["8000:8000"]
+    depends_on: [db, sentiment]
+volumes:
+  pg_data: {}

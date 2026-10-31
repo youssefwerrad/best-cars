@@ -1,0 +1,59 @@
+.auth-page { display: grid; min-height: calc(100vh - 82px); place-items: center; padding: 28px 18px; background: radial-gradient(ellipse at 50% 0%, #edf5ef 0, #fbfcfa 55%); }
+.auth-card { width: min(100%, 480px); padding: clamp(22px, 3vw, 34px); border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 16px 45px rgba(23, 47, 44, .06); }
+.register-card { display: grid; width: min(100%, 720px); grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 14px; align-content: center; }
+.register-card > .eyebrow, .register-card > h1, .register-card > .auth-intro, .register-card > .form-error, .register-card > .auth-submit, .register-card > .auth-switch { grid-column: 1 / -1; }
+.register-card > .auth-intro { margin-bottom: 17px; }
+.register-card .form-row { grid-column: span 4; }
+.register-card > .form-field:nth-child(5) { grid-column: span 2; }
+.register-card > .form-field:nth-child(6), .register-card > .form-field:nth-child(7) { grid-column: span 3; }
+.auth-card > .eyebrow { margin-bottom: 10px; }
+.auth-card h1 { margin: 6px 0 8px; font-size: clamp(26px, 3vw, 32px); }
+.auth-intro { margin: 0 0 19px; color: var(--muted); font-size: 13px; }
+.form-row, .purchase-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 11px; color: #465852; font-size: 12px; font-weight: 700; }
+.form-field input, .form-field select, .form-field textarea { width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #dfe7e2; border-radius: 7px; background: white; color: var(--ink); font-size: 13px; font-weight: 400; outline: 0; }
+.form-field textarea { min-height: 140px; resize: vertical; line-height: 1.65; }
+.form-field input::placeholder, .form-field textarea::placeholder { color: #9aa7a1; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: #08bfc1; box-shadow: 0 0 0 3px rgba(8, 191, 193, .13); }
+.form-error { margin: 0 0 14px; padding: 10px 12px; border-radius: 7px; background: #fff0ef; color: #a33631; font-size: 12px; }
+.auth-submit { width: 100%; margin-top: 4px; }
+.auth-switch { margin: 14px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+.auth-switch a { color: var(--green); font-weight: 700; }
+.auth-switch a:hover { text-decoration: underline; }
+.review-page { padding-top: 38px; }
+.review-form { width: min(100%, 650px); }
+.review-form > .back-link { margin: 0 0 20px; }
+.review-form .auth-intro { margin-bottom: 23px; }
+.purchase-toggle { display: flex; align-items: flex-start; gap: 11px; margin: 6px 0 20px; cursor: pointer; }
+.purchase-toggle input { width: 17px; height: 17px; margin: 2px 0 0; accent-color: var(--green); }
+.purchase-toggle strong, .purchase-toggle small { display: block; }
+.purchase-toggle strong { font-size: 13px; }
+.purchase-toggle small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+.purchase-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 13px; }
+.rating-picker { margin: 0 0 13px; padding: 0; border: 0; }
+.rating-picker legend { margin-bottom: 5px; color: #465852; font-size: 12px; font-weight: 700; }
+.rating-picker button { padding: 0 3px; border: 0; background: transparent; color: #d3d8dc; font-size: 27px; cursor: pointer; }
+.rating-picker button.star-selected { color: #c79321; }
+.form-field small, .photo-count { color: var(--muted); font-size: 10px; font-weight: 400; }
+.photo-count { margin: -5px 0 12px; }
+.review-confirmation { text-align: center; }
+.review-confirmation .button { margin-top: 12px; }
+
+@media (max-width: 520px) {
+  .auth-card { padding: 27px 21px; }
+  .auth-card h1 { font-size: 28px; }
+  .form-row, .purchase-fields { grid-template-columns: 1fr; gap: 0; }
+  .register-card { display: block; }
+}
+
+@media (max-height: 650px) and (min-width: 521px) {
+  .auth-page { min-height: calc(100vh - 72px); padding-top: 16px; padding-bottom: 16px; }
+  .auth-card { padding: 14px 22px; }
+  .auth-card > .eyebrow { margin-bottom: 5px; }
+  .auth-card h1 { margin-top: 3px; margin-bottom: 5px; }
+  .auth-intro, .register-card > .auth-intro { margin-bottom: 8px; }
+  .form-field { gap: 4px; margin-bottom: 5px; }
+  .form-field input, .form-field select { min-height: 36px; padding-top: 7px; padding-bottom: 7px; }
+  .auth-submit { min-height: 42px; }
+  .auth-switch { margin-top: 7px; }
+}
