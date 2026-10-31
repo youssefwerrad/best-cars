@@ -10,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, override_settings
 from django.test import TestCase
 from PIL import Image
+import requests
 
 from .models import Car, Dealer, DealerFavorite, HelpfulVote, Review, ReviewPhoto, ReviewReport
 from .restapis import analyze_review_sentiments
@@ -130,6 +131,25 @@ class ApiTests(TestCase):
         post.assert_called_once()
         self.assertTrue(post.call_args.args[0].endswith("/analyze"))
         self.assertEqual(post.call_args.kwargs["json"], {"text": "bad /service? #review"})
+
+    def test_sentiment_service_failure_returns_unset_sentiment(self):
+        with patch("djangoapp.restapis.requests.post", side_effect=requests.ConnectionError("offline")):
+            self.assertIsNone(analyze_review_sentiments("Great service."))
+
+    def test_sentiment_service_failure_is_not_saved_as_neutral(self):
+        self.client.login(username="u", password="pw12345678")
+        with patch("djangoapp.views.analyze_review_sentiments", return_value=None):
+            response = self.post("add_review", {
+                "dealership": self.d.id, "review": "The sentiment service is unavailable.",
+                "rating": 3, "recommend": False,
+            })
+        self.assertEqual(response.status_code, 200, response.json())
+        review = Review.objects.get(pk=response.json()["review_id"])
+        self.assertIsNone(review.sentiment)
+        review.status = "approved"
+        review.save(update_fields=["status"])
+        listed = self.client.get(f"/djangoapp/reviews/dealer/{self.d.id}")
+        self.assertIsNone(listed.json()["reviews"][0]["sentiment"])
 
     def test_register_duplicate(self):
         self.assertIn("error", self.post("register", {"userName": "u", "password": "x"}).json())

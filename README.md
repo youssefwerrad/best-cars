@@ -1,14 +1,15 @@
 # Car Dealership Reviews (Django + SQL + React/Vite)
 
 ```bash
-cd server && pip install -r requirements.txt
+cd server
+cp .env.example .env
+# Set DJANGO_SECRET_KEY to a long, random value before starting Django.
+pip install -r requirements.txt
 python manage.py migrate && python manage.py seed && python manage.py createsuperuser
 python manage.py runserver        # app at :8000 (uses frontend/dist)
 ```
 Optional: `cd frontend && npm install && npm run build` (or `npm run dev` with Django running).
-Sentiment service: `cd djangoapp/microservices && pip install -r requirements.txt && flask run -p 5050` (falls back to "neutral" if offline).
-
-For deployments, set `DJANGO_SECRET_KEY` to a private, randomly generated value; the fallback in Django settings is for local development only.
+Sentiment service: `cd djangoapp/microservices && pip install -r requirements.txt && flask run -p 5050`. If it is unavailable during review submission, sentiment is left unset rather than stored as a false neutral value.
 
 ## Run with Docker
 
@@ -20,6 +21,8 @@ docker compose up --build
 ```
 
 Docker builds the React frontend into the Django image, serves static assets with WhiteNoise, and runs Django and the sentiment service with Gunicorn. `DEBUG` is disabled in Compose. User uploads are stored separately from collected static assets in the persistent `media_data` volume. PostgreSQL health checks ensure the database is ready before migrations run. Keep `server/.env` private and use separate strong credentials for deployments.
+
+For HTTPS deployments, set `SECURE_SSL_REDIRECT=True`, `SECURE_HSTS_SECONDS` to an appropriate duration, and `SESSION_COOKIE_SECURE=True` and `CSRF_COOKIE_SECURE=True`. Enable HSTS subdomains/preload only when every affected subdomain is HTTPS-ready. If TLS terminates at a reverse proxy that overwrites `X-Forwarded-Proto`, set `TRUST_X_FORWARDED_PROTO=True` and ensure the app cannot be reached around that trusted proxy.
 
 ## Dealership and review features
 

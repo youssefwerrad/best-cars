@@ -25,11 +25,6 @@ def _sentiment(input_txt):
     return res
 
 
-@app.get('/analyze/<path:input_txt>')
-def analyze_sentiment(input_txt):
-    return jsonify({"sentiment": _sentiment(input_txt)})
-
-
 @app.post('/analyze')
 def analyze_sentiment_json():
     data = request.get_json(silent=True) or {}

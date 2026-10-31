@@ -227,7 +227,7 @@ function ReviewCard({ review, isStaff, user }) {
   }
   return (
     <article className="review-card">
-      <div className="review-card-top"><img src={senti[review.sentiment] || neutral} className="emotion-icon" alt={`${review.sentiment || "neutral"} sentiment`} /><span className={`sentiment-label sentiment-${senti[review.sentiment] ? review.sentiment : "neutral"}`}>{review.sentiment || "neutral"}</span>
+      <div className="review-card-top"><img src={senti[review.sentiment] || neutral} className="emotion-icon" alt={review.sentiment ? `${review.sentiment} sentiment` : "Sentiment unavailable"} /><span className={`sentiment-label sentiment-${senti[review.sentiment] ? review.sentiment : "neutral"}`}>{review.sentiment || "unavailable"}</span>
         {review.verified_purchase && <span className="verified-badge">✓ Verified purchase</span>}
       </div>
       <div className="review-rating" aria-label={`${review.rating || "Unrated"} out of 5 stars`}>{"★".repeat(Number(review.rating || 0))}<span>{"☆".repeat(5 - Number(review.rating || 0))}</span><small>{review.rating ? `${review.rating}/5` : "Unrated"}</small></div>

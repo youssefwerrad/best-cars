@@ -69,7 +69,7 @@ class Review(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="dealer_reviews")
     name = models.CharField(max_length=100)
     review = models.TextField()
-    sentiment = models.CharField(max_length=8, choices=SENTIMENT_CHOICES, default="neutral")
+    sentiment = models.CharField(max_length=8, choices=SENTIMENT_CHOICES, blank=True, null=True, default=None)
     purchase = models.BooleanField(default=False)
     verified_purchase = models.BooleanField(default=False)
     rating = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
