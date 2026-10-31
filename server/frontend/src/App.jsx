@@ -10,7 +10,7 @@ export default function App() {
   useEffect(() => {
     api("whoami").then((r) => { setUser(r.userName || ""); setIsStaff(Boolean(r.isStaff)); }).finally(() => setReady(true));
   }, []);
-  const logout = async () => { await api("logout"); setUser(""); setIsStaff(false); };
+  const logout = async () => { await api("logout", {}); setUser(""); setIsStaff(false); };
 
   return (
     <AuthContext.Provider value={{ user, setUser, ready, isStaff, setIsStaff }}>

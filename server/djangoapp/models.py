@@ -64,10 +64,12 @@ class Dealer(models.Model):
 
 class Review(models.Model):
     STATUS_CHOICES = [("pending", "Pending"), ("approved", "Approved"), ("rejected", "Rejected")]
+    SENTIMENT_CHOICES = [("positive", "Positive"), ("neutral", "Neutral"), ("negative", "Negative")]
     dealership = models.ForeignKey(Dealer, on_delete=models.CASCADE, related_name="reviews")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="dealer_reviews")
     name = models.CharField(max_length=100)
     review = models.TextField()
+    sentiment = models.CharField(max_length=8, choices=SENTIMENT_CHOICES, default="neutral")
     purchase = models.BooleanField(default=False)
     verified_purchase = models.BooleanField(default=False)
     rating = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])

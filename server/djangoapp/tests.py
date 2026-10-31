@@ -1,14 +1,18 @@
 from io import BytesIO
 import json
+from pathlib import Path
 import tempfile
+from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.test import TestCase
 from PIL import Image
 
 from .models import Car, Dealer, DealerFavorite, HelpfulVote, Review, ReviewPhoto, ReviewReport
+from .restapis import analyze_review_sentiments
 
 
 class ApiTests(TestCase):
@@ -29,9 +33,65 @@ class ApiTests(TestCase):
         self.assertEqual(len(self.client.get("/djangoapp/get_dealers").json()["dealers"]), 1)
         self.assertEqual(self.client.get("/djangoapp/get_dealers/Ohio").json()["dealers"], [])
 
+    def test_uploaded_media_is_separate_from_collected_static(self):
+        media_root = Path(settings.MEDIA_ROOT).resolve()
+        static_root = Path(settings.STATIC_ROOT).resolve()
+        self.assertNotEqual(media_root, static_root)
+        self.assertNotIn(static_root, media_root.parents)
+
     def test_review_requires_login(self):
         r = self.post("add_review", {"dealership": self.d.id, "review": "hi"})
         self.assertEqual(r.status_code, 403)
+
+    def test_csrf_protects_login_and_authenticated_mutations(self):
+        client = Client(enforce_csrf_checks=True)
+        login_payload = json.dumps({"userName": "u", "password": "pw12345678"})
+        self.assertEqual(client.post(
+            "/djangoapp/login", login_payload, content_type="application/json").status_code, 403)
+
+        client.get("/djangoapp/whoami")
+        csrf_token = client.cookies["csrftoken"].value
+        self.assertEqual(client.post(
+            "/djangoapp/login", login_payload, content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token).status_code, 200)
+        csrf_token = client.cookies["csrftoken"].value
+
+        favorite_path = f"/djangoapp/dealer/{self.d.id}/favorite"
+        favorite_payload = json.dumps({"favorite": True})
+        self.assertEqual(client.post(
+            favorite_path, favorite_payload, content_type="application/json").status_code, 403)
+        self.assertFalse(DealerFavorite.objects.exists())
+        self.assertEqual(client.post(
+            favorite_path, favorite_payload, content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token).status_code, 200)
+
+        review = Review.objects.create(
+            dealership=self.d, name="u", review="Needs moderation.",
+            author=User.objects.get(username="u"), rating=4, status="pending")
+        moderator = User.objects.create_user("moderator", "pw12345678", is_staff=True)
+        staff_client = Client(enforce_csrf_checks=True)
+        staff_client.force_login(moderator)
+        staff_client.get("/djangoapp/whoami")
+        staff_csrf_token = staff_client.cookies["csrftoken"].value
+        moderation_path = f"/djangoapp/moderation/reviews/{review.id}"
+        moderation_payload = json.dumps({"action": "approve"})
+        self.assertEqual(staff_client.post(
+            moderation_path, moderation_payload, content_type="application/json").status_code, 403)
+        self.assertEqual(review.status, "pending")
+        self.assertEqual(staff_client.post(
+            moderation_path, moderation_payload, content_type="application/json",
+            HTTP_X_CSRFTOKEN=staff_csrf_token).status_code, 200)
+        review.refresh_from_db()
+        self.assertEqual(review.status, "approved")
+
+    def test_logout_requires_csrf_protected_post(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(User.objects.get(username="u"))
+        self.assertEqual(client.get("/djangoapp/logout").status_code, 405)
+        client.get("/djangoapp/whoami")
+        self.assertEqual(client.post(
+            "/djangoapp/logout",
+            HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value).status_code, 200)
 
     def test_login_review_whoami(self):
         self.assertEqual(self.post("login", {"userName": "u", "password": "pw12345678"}).json()["status"], "Authenticated")
@@ -40,6 +100,36 @@ class ApiTests(TestCase):
             "dealership": self.d.id, "review": "great", "rating": 5, "recommend": True,
         }).json()["status"], 200)
         self.assertEqual(self.post("add_review", {"dealership": self.d.id, "review": " "}).json()["status"], 400)
+
+    def test_sentiment_is_computed_when_review_is_written_and_reused(self):
+        self.client.login(username="u", password="pw12345678")
+        review_text = "Great service / quick answers? Absolutely #1!"
+        with patch("djangoapp.views.analyze_review_sentiments", return_value="positive") as analyze:
+            response = self.post("add_review", {
+                "dealership": self.d.id, "review": review_text, "rating": 5, "recommend": True,
+            })
+        self.assertEqual(response.status_code, 200, response.json())
+        analyze.assert_called_once_with(review_text)
+
+        review = Review.objects.get(pk=response.json()["review_id"])
+        self.assertEqual(review.sentiment, "positive")
+        review.status = "approved"
+        review.save(update_fields=["status"])
+        with patch("djangoapp.views.analyze_review_sentiments", side_effect=AssertionError("must not run on list")):
+            listed = self.client.get(f"/djangoapp/reviews/dealer/{self.d.id}")
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["reviews"][0]["sentiment"], "positive")
+
+    def test_sentiment_service_receives_text_as_json_not_url_path(self):
+        with patch("djangoapp.restapis.requests.post") as post:
+            post.return_value.json.return_value = {"sentiment": "negative"}
+            self.assertEqual(
+                analyze_review_sentiments("bad /service? #review"),
+                "negative",
+            )
+        post.assert_called_once()
+        self.assertTrue(post.call_args.args[0].endswith("/analyze"))
+        self.assertEqual(post.call_args.kwargs["json"], {"text": "bad /service? #review"})
 
     def test_register_duplicate(self):
         self.assertIn("error", self.post("register", {"userName": "u", "password": "x"}).json())

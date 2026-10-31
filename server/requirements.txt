@@ -4,3 +4,4 @@ Pillow
 gunicorn
 python-dotenv
 psycopg2-binary
+whitenoise>=6.8,<7

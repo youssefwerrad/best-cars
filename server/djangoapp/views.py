@@ -8,7 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count, F, Q
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import (Car, CarModel, Dealer, DealerFavorite, DealerResponse,
                      HelpfulVote, Review, ReviewPhoto, ReviewReport)
@@ -47,8 +47,9 @@ def _query_int(value, default, minimum, maximum):
         return default
 
 
-@csrf_exempt
 def login_user(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "POST required"}, status=405)
     data = json.loads(request.body)
     user = authenticate(username=data["userName"], password=data["password"])
     if user is None:
@@ -58,12 +59,15 @@ def login_user(request):
 
 
 def logout_user(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "POST required"}, status=405)
     logout(request)
     return JsonResponse({"userName": ""})
 
 
-@csrf_exempt
 def registration(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "POST required"}, status=405)
     data = json.loads(request.body)
     try:
         user = User.objects.create_user(
@@ -172,7 +176,7 @@ def get_dealer_reviews(request, dealer_id):
                 "created_at": r.dealer_response.created_at.isoformat(),
             } if hasattr(r, "dealer_response") else None,
         }
-        item["sentiment"] = analyze_review_sentiments(r.review)
+        item["sentiment"] = r.sentiment
         out.append(item)
     return JsonResponse({
         "status": 200, "reviews": out, "total": paginator.count,
@@ -180,7 +184,6 @@ def get_dealer_reviews(request, dealer_id):
     })
 
 
-@csrf_exempt
 def add_review(request):
     if request.method != "POST":
         return JsonResponse({"status": 405, "message": "POST required"}, status=405)
@@ -208,11 +211,13 @@ def add_review(request):
     if recommend not in (True, False, "true", "false", "yes", "no", "1", "0"):
         return JsonResponse({"status": 400, "message": "Choose whether you recommend this dealer."}, status=400)
     recommend = recommend in (True, "true", "yes", "1")
+    review_text = str(d["review"]).strip()
+    sentiment = analyze_review_sentiments(review_text)
     try:
         with transaction.atomic():
             review = Review(
                 dealership_id=int(d["dealership"]), author=request.user,
-                name=request.user.username, review=str(d["review"]).strip(), rating=rating,
+                name=request.user.username, review=review_text, sentiment=sentiment, rating=rating,
                 recommend=recommend, purchase=str(d.get("purchase", "")).lower() in ("true", "1", "yes"),
                 purchase_date=d.get("purchase_date", ""),
                 car_make=d.get("car_make", ""), car_model=d.get("car_model", ""),
@@ -236,6 +241,7 @@ def add_review(request):
     })
 
 
+@ensure_csrf_cookie
 def whoami(request):
     return JsonResponse({
         "userName": request.user.username if request.user.is_authenticated else "",
@@ -248,7 +254,6 @@ def get_dealer_cars(request, dealer_id):
     return JsonResponse({"status": 200, "cars": list(qs.values("id", "make", "model", "body_type", "year", "mileage"))})
 
 
-@csrf_exempt
 def toggle_favorite(request, dealer_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required"}, status=405)
@@ -282,7 +287,6 @@ def saved_dealers(request):
     return JsonResponse({"dealers": dealers})
 
 
-@csrf_exempt
 def helpful_vote(request, review_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required."}, status=405)
@@ -298,7 +302,6 @@ def helpful_vote(request, review_id):
     }, status=201 if created else 200)
 
 
-@csrf_exempt
 def report_review(request, review_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required."}, status=405)
@@ -340,7 +343,6 @@ def moderation_queue(request):
     })
 
 
-@csrf_exempt
 def moderate_review(request, review_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required."}, status=405)
@@ -365,7 +367,6 @@ def moderate_review(request, review_id):
     return JsonResponse({"review_status": review.status, "verified_purchase": review.verified_purchase})
 
 
-@csrf_exempt
 def moderate_report(request, report_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required."}, status=405)
@@ -386,7 +387,6 @@ def moderate_report(request, report_id):
     return JsonResponse({"report_status": report.status})
 
 
-@csrf_exempt
 def dealer_response(request, review_id):
     if request.method != "POST":
         return JsonResponse({"message": "POST required."}, status=405)

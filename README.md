@@ -10,6 +10,17 @@ Sentiment service: `cd djangoapp/microservices && pip install -r requirements.tx
 
 For deployments, set `DJANGO_SECRET_KEY` to a private, randomly generated value; the fallback in Django settings is for local development only.
 
+## Run with Docker
+
+```bash
+cd server
+cp .env.example .env
+# Replace DB_PASSWORD and DJANGO_SECRET_KEY with unique local values.
+docker compose up --build
+```
+
+Docker builds the React frontend into the Django image, serves static assets with WhiteNoise, and runs Django and the sentiment service with Gunicorn. `DEBUG` is disabled in Compose. User uploads are stored separately from collected static assets in the persistent `media_data` volume. PostgreSQL health checks ensure the database is ready before migrations run. Keep `server/.env` private and use separate strong credentials for deployments.
+
 ## Dealership and review features
 
 - The dealer directory supports state, city, vehicle make, and body-type filters, rating/review/name sorting, and server-side pagination.

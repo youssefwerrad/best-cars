@@ -1,19 +1,46 @@
 services:
   db:
     image: postgres:16
-    environment: {POSTGRES_DB: dealership, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres}
-    volumes: [pg_data:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in server/.env}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in server/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in server/.env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
   sentiment:
     build: ./djangoapp/microservices
-    ports: ["5050:5000"]
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app:app"]
   web:
     build: .
-    command: sh -c "python manage.py migrate && python manage.py seed && python manage.py runserver 0.0.0.0:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 djangoproj.wsgi:application"
     environment:
       DB_ENGINE: postgres
+      DB_NAME: ${DB_NAME:?Set DB_NAME in server/.env}
+      DB_USER: ${DB_USER:?Set DB_USER in server/.env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in server/.env}
       DB_HOST: db
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in server/.env}
+      DEBUG: "False"
+      MEDIA_ROOT: /app/media
       sentiment_analyzer_url: http://sentiment:5000/
-    ports: ["8000:8000"]
-    depends_on: [db, sentiment]
+    volumes:
+      - media_data:/app/media
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      sentiment:
+        condition: service_started
 volumes:
-  pg_data: {}
+  pg_data:
+  media_data:

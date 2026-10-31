@@ -9,7 +9,13 @@ sentiment_analyzer_url = os.getenv("sentiment_analyzer_url", default="http://loc
 
 def analyze_review_sentiments(text):
     try:
-        r = requests.get(sentiment_analyzer_url + "analyze/" + text, timeout=3)
-        return r.json().get("sentiment", "neutral")
+        response = requests.post(
+            sentiment_analyzer_url.rstrip("/") + "/analyze",
+            json={"text": text},
+            timeout=3,
+        )
+        response.raise_for_status()
+        sentiment = response.json().get("sentiment")
+        return sentiment if sentiment in {"positive", "neutral", "negative"} else "neutral"
     except Exception:
         return "neutral"
