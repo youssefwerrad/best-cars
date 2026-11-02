@@ -33,7 +33,9 @@ if not SECRET_KEY:
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.app.github.dev').split(',')
-CSRF_TRUSTED_ORIGINS = ['https://*.app.github.dev']
+   CSRF_TRUSTED_ORIGINS = ['https://*.app.github.dev'] + [
+       o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o
+   ]
 SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
 SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False').lower() == 'true'
